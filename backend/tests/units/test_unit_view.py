@@ -7,25 +7,109 @@ from units.models import ReservedUnit
 from units.utils import AMOUNT_ERROR_MESSAGE
 
 
-class TestUnitView(BaseUnitsTest):
+class TestUnitsView(BaseUnitsTest):
     def test__get_unit_list_unauthorised__forbidden(self) -> None:
         response = self.client.get(self.units_list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test__unit_list_unsafe_methods__not_allowed(self) -> None:
         self.client.force_login(self.user)
-        for method in ['post', 'put', 'patch', 'delete']:
+        for method in ['post',]:
             call_method = getattr(self.client, method.lower())
             response = call_method(self.units_list_url)
             self.assertEqual(
                 response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
             )
 
+    def test__unit_detail_unsafe_methods__not_allowed(self) -> None:
+        self.client.force_login(self.user)
+        for method in ['put', 'patch', 'delete']:
+            call_method = getattr(self.client, method.lower())
+            response = call_method(self.units_detail_url)
+            self.assertEqual(
+                response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+
+    def test__get_search_by_same_name_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.units_list_url}?search={self.units[0].name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_search_by_name_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.units_list_url}?search={self.units[1].name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test__get_filtered_by_shop_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.units_list_url}?shop__name={self.units[0].shop.name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_filtered_by_name_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.units_list_url}?name={self.units[0].name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_filtered_by_shop_and_unit_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        filters = f'shop__name={self.units[0].shop.name}&name={self.units[0].name}'
+        response = self.client.get(
+            f'{self.units_list_url}?{filters}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
     def test__get_units_list__success(self) -> None:
         self.client.force_login(self.user)
         response = self.client.get(self.units_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), len(self.units))
+        # check default ordering
+        srt = [
+            i['id'] for i in sorted(
+                response.data,
+                key=lambda x: (
+                    x['shop'],
+                    x['name'],
+                    x['price']
+                )
+            )
+        ]
+
+        self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_units_list_ordering_by_price_for_kg_reversed___success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        ordering = '-price_for_kg'
+        response = self.client.get(
+            f'{self.units_list_url}?ordering={ordering}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.units))
+
+        srt = [
+            i['id'] for i in sorted(
+                response.data,
+                key=lambda x: (
+                    x['price_for_kg']
+                ),
+                reverse=True
+            )]
+        self.assertEqual(srt, [i['id'] for i in response.data])
 
     def test__get_units_detail__success(self) -> None:
         self.client.force_login(self.user)
@@ -34,6 +118,12 @@ class TestUnitView(BaseUnitsTest):
         self.assertEqual(response.data['id'], self.units[0].id)
         self.assertEqual(response.data['name'], self.units[0].name)
         self.assertEqual(
+            Decimal(response.data['weight']), self.units[0].weight)
+        self.assertEqual(response.data['amount'], self.units[0].amount)
+        self.assertEqual(
+            Decimal(response.data['price']), self.units[0].price
+        )
+        self.assertEqual(
             response.data['price_for_kg'],
             round((Decimal(1) / self.units[0].weight) * self.units[0].price, 2)
         )
@@ -41,15 +131,191 @@ class TestUnitView(BaseUnitsTest):
 
 class TestReservedUnitsView(BaseReservedUnitsTest):
 
-    def test__get_reserved_unit_list_unauthorised__forbidden(self) -> None:
+    def test__get_reserved_units_list_unauthorised__forbidden(self) -> None:
         response = self.client.get(self.reserved_units_list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test__reserved_units_list_put__not_allowed(self) -> None:
+        self.client.force_login(self.user)
+
+        response = self.client.put(
+            self.reserved_units_detail_url,
+            data={
+                'user_id': self.user.id,
+                'unit_id': self.reserved_units[0].id
+            },
+            format='json'
+        )
+        self.assertEqual(
+            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    def test__get_search_by_same_name_reserved_units_list__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?search={self.reserved_units[0].unit.name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_search_by_name_reserved_units_list__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?search={self.reserved_units[1].unit.name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test__get_filtered_by_shop_reserved_units_list__success(self) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?unit__shop__name={self.reserved_units[0].unit.shop.name}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_filtered_by_unit_name_reserved_units_list__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        filters = f'unit__name={self.reserved_units[0].unit.name}'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?{filters}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test__get_filtered_by_shop_and_unit_name_reserved_units_list__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        filters = f'unit__shop__name={self.reserved_units[0].unit.shop.name}&unit__name={self.reserved_units[0].unit.name}'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?{filters}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
 
     def test__get_reserved_units_list__success(self) -> None:
         self.client.force_login(self.user)
         response = self.client.get(self.reserved_units_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), len(self.reserved_units))
+        # check default ordering
+        srt = [
+            i['id'] for i in sorted(
+                response.data,
+                key=lambda x: (
+                    x['unit']['shop'],
+                    x['unit']['name'],
+                    x['unit']['price']
+                )
+            )
+        ]
+
+        self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_reserved_units_list_ordered_by_price_for_kg_reversed__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        ordering = '-unit__price_for_kg'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?ordering={ordering}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.reserved_units))
+
+        srt = [
+            i['id'] for i in sorted(
+                response.data,
+                key=lambda x: (
+                    x['unit']['price_for_kg']
+                ),
+                reverse=True
+            )
+        ]
+
+        self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_reserved_units_list_ordered_by_shop_unit_price_for_kg__success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        ordering = 'unit__shop__name,unit__name,unit__price_for_kg'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?ordering={ordering}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.reserved_units))
+        srt = [
+            i['id'] for i in sorted(
+                response.data,
+                key=lambda x: (
+                    x['unit']['shop'],
+                    x['unit']['name'],
+                    x['unit']['price_for_kg']
+                )
+            )
+        ]
+
+        self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_reserved_units_list_ordered_by_shop_price_for_kg_reversed_success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        ordering = 'unit__shop__name,-unit__price_for_kg'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?ordering={ordering}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.reserved_units))
+
+        reserved_ids = [i['id'] for i in response.data]
+        if (
+            self.reserved_units[0].unit.price_for_kg
+            > self.reserved_units[1].unit.price_for_kg
+        ):
+            self.assertTrue(
+                reserved_ids.index(self.reserved_units[0].id)
+                < reserved_ids.index(self.reserved_units[1].id)
+            )
+        else:
+            self.assertTrue(
+                reserved_ids.index(self.reserved_units[0].id)
+                > reserved_ids.index(self.reserved_units[1].id)
+            )
+
+    def test__get_reserved_units_list_ordered_by_unit_price_for_kg_success(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        ordering = '-unit__name,unit__price_for_kg'
+        response = self.client.get(
+            f'{self.reserved_units_list_url}?ordering={ordering}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.reserved_units))
+
+        reserved_ids = [i['id'] for i in response.data]
+        if (
+            self.reserved_units[0].unit.price_for_kg
+            > self.reserved_units[2].unit.price_for_kg
+        ):
+            self.assertTrue(
+                reserved_ids.index(self.reserved_units[0].id)
+                > reserved_ids.index(self.reserved_units[2].id)
+            )
+        else:
+            self.assertTrue(
+                reserved_ids.index(self.reserved_units[0].id)
+                < reserved_ids.index(self.reserved_units[2].id)
+            )
 
     def test__get_other_reserved_units_list__success(self) -> None:
         self.client.force_login(self.other_reserved_unit.user)
@@ -72,6 +338,13 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         self.assertEqual(
             response.data['amount'], self.reserved_units[0].amount
         )
+        self.assertEqual(
+            response.data['total'],
+            round(
+                self.reserved_units[0].unit.price
+                * Decimal(self.reserved_units[0].amount), 2
+            )
+        )
 
     def test__post_reserved_units_list__created(self) -> None:
         self.client.force_login(self.user)
@@ -84,6 +357,16 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
             format='json'
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.assertEqual(
+            response.data['user'], self.reserved_units[0].user.username
+        )
+        self.assertEqual(
+            response.data['unit']['id'], self.other_unit.id
+        )
+        self.assertEqual(
+            response.data['amount'], 1
+        )
 
     def test__post_same_reserved_units_list__success(self) -> None:
         self.client.force_login(self.other_reserved_unit.user)
@@ -245,3 +528,21 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
                 reserved_unit.unit.amount,
                 sum(initial_amounts[reserved_unit.id])
             )
+
+    def test__get_search_by_not_admin_user_reserved_units_list__forbidden(
+        self
+    ) -> None:
+        self.client.force_login(self.user)
+        response = self.client.get(self.reserved_units_search_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test__get_search_by_admin_user_reserved_units_list__success(
+        self
+    ) -> None:
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=('is_staff', 'is_superuser'))
+        self.client.force_login(self.user)
+        response = self.client.get(self.reserved_units_search_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 10)

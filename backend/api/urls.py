@@ -25,10 +25,9 @@ from rest_framework.response import Response
 
 from units.views import ReservedUnitView, ReservedUnitsSearchView, UnitView
 from shops.views import ShopView
-from users.views import UserView
+from users.views import AppAccountView, UserView
 
 if TYPE_CHECKING:
-    from django.db.models.query import QuerySet
     from rest_framework.request import Request
 
 
@@ -36,12 +35,13 @@ router = routers.DefaultRouter()
 router.register(r'units', UnitView, 'unit')
 router.register(r'reserved-units', ReservedUnitView, 'reserved-unit')
 router.register(
-    r'reserved-search',
+    r'reserved-search/(?P<username>.+)',
     ReservedUnitsSearchView,
     'reserved-search'
 )
 router.register(r'shops', ShopView, 'shop')
 router.register(r'users', UserView, 'user')
+router.register(r'app_acounts', AppAccountView, 'app_account')
 
 
 @api_view(['GET'])

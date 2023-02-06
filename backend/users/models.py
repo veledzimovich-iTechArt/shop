@@ -28,7 +28,7 @@ class User(AbstractUser):
 
 
 @receiver(post_save, sender=User)
-def update_reserved_hook(
+def create_account_hook(
     sender: User, instance: User, using: str, **kwargs
 ) -> None:
     if not hasattr(instance, 'app_account'):

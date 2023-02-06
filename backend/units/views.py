@@ -59,8 +59,8 @@ class ReservedUnitView(viewsets.ModelViewSet):
     ]
     property_ordering_fields = ['unit__price_for_kg']
     ordering = ['unit__shop__name', 'unit__name', 'unit__price']
-    search_fields = ['unit__name' '=unit__price']
-    allowed_methods = ['GET', 'POST', 'PATCH', 'DELETE']
+    search_fields = ['unit__name', '=unit__price']
+    http_method_names = ['get', 'head', 'options', 'post', 'patch', 'delete']
 
     def get_queryset(self) -> 'QuerySet':
         return (
@@ -134,5 +134,5 @@ class ReservedUnitsSearchView(mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = [IsAdminUser]
 
     def get_queryset(self) -> 'QuerySet':
-        username = self.kwargs['username']
+        username = self.kwargs.get('username')
         return ReservedUnit.objects.filter(user__username=username)

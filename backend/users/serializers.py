@@ -4,6 +4,7 @@ from users.models import AppAccount, User
 
 
 class AppAccountSerializer(serializers.ModelSerializer):
+
     # amount = serializers.DecimalField(
     #     max_digits=12, decimal_places=2, min_value=0,
     #     error_messages={
@@ -18,8 +19,16 @@ class AppAccountSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    app_account = AppAccountSerializer()
+    app_account = AppAccountSerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'app_account']
+        fields = [
+            'id',
+            'username',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'app_account',
+        ]
