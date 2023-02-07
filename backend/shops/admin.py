@@ -5,9 +5,7 @@ from shops.models import Shop
 
 
 class ShopAdmin(admin.ModelAdmin):
-    list_display = (
-        'id', 'name',
-    )
+    list_display = ('id', 'name')
     fields = ('name',)
 
 

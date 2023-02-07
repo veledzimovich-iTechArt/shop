@@ -69,16 +69,6 @@ class ReservedUnitView(viewsets.ModelViewSet):
             .select_related('user', 'unit__shop')
         )
 
-    def create(self, request: 'Request', *args, **kwargs) -> Response:
-        # if exist update reserved unit
-        if reserved := ReservedUnit.objects.filter(
-            unit_id=request.data['unit_id'], user_id=request.data['user_id']
-        ).first():
-            self.kwargs = {'pk': reserved.id}
-            kwargs['pk'] = reserved.id
-            return self.update(request, *args, **kwargs)
-        return super().create(request, *args, **kwargs)
-
     @atomic
     def __process_buying(
         self, request: 'Request', queryset: 'QuerySet', total: Decimal

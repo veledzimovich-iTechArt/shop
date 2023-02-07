@@ -2,7 +2,7 @@
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from tests.units.factories import ReservedUnitFactory, UnitFactory
+from api.tests.units.factories import ReservedUnitFactory, UnitFactory
 
 
 class TestUnitsModel(TestCase):

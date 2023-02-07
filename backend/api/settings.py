@@ -66,7 +66,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    *[app for app in ['debug_toolbar.middleware.DebugToolbarMiddleware'] if DEBUG],
+    *[
+        app
+        for app in ['debug_toolbar.middleware.DebugToolbarMiddleware']
+        if DEBUG
+    ],
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',

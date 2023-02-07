@@ -41,7 +41,7 @@ router.register(
 )
 router.register(r'shops', ShopView, 'shop')
 router.register(r'users', UserView, 'user')
-router.register(r'app_acounts', AppAccountView, 'app_account')
+router.register(r'app-accounts', AppAccountView, 'app-account')
 
 
 @api_view(['GET'])

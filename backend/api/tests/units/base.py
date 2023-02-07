@@ -3,8 +3,8 @@ from decimal import Decimal
 from rest_framework.reverse import reverse_lazy
 from rest_framework.test import APITestCase
 
-from tests.units.factories import ReservedUnitFactory, UnitFactory
-from tests.users.factories import UserFactory
+from api.tests.units.factories import ReservedUnitFactory, UnitFactory
+from api.tests.users.factories import UserFactory
 
 
 class BaseUnitsTest(APITestCase):
@@ -57,7 +57,8 @@ class BaseReservedUnitsTest(APITestCase):
         cls.other_reserved_unit = ReservedUnitFactory()
 
         cls.reserved_units_list_url = reverse_lazy('reserved-unit-list')
-        cls.reserved_units_detail_url = reverse_lazy(
+
+        cls.reserved_unit_detail_url = reverse_lazy(
             'reserved-unit-detail', args=(cls.reserved_units[0].id,)
         )
         cls.other_reserved_unit_detail_url = reverse_lazy(

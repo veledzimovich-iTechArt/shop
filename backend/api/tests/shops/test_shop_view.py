@@ -1,6 +1,7 @@
 # sourcery skip: snake-case-functions
 from rest_framework import status
-from tests.shops.base import BaseShopTest
+
+from api.tests.shops.base import BaseShopTest
 
 
 class TestShopView(BaseShopTest):

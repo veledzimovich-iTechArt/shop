@@ -1,5 +1,5 @@
 import factory
-from users.models import AppAccount, User
+from users.models import User
 
 
 class UserFactory(factory.django.DjangoModelFactory):

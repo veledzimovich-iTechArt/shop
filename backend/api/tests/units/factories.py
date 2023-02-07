@@ -1,7 +1,9 @@
 import factory
-from tests.shops.factories import ShopFactory
+
+from api.tests.shops.factories import ShopFactory
+from api.tests.users.factories import UserFactory
+
 from units.models import ReservedUnit, Unit
-from tests.users.factories import UserFactory
 
 
 class UnitFactory(factory.django.DjangoModelFactory):

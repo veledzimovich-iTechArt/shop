@@ -2,7 +2,7 @@
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from tests.shops.factories import ShopFactory
+from api.tests.shops.factories import ShopFactory
 
 
 class TestShopsModel(TestCase):

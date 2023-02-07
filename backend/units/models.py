@@ -1,11 +1,11 @@
 from decimal import Decimal
 
 from django.contrib.postgres.fields import CICharField
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as RestValidationError
 from rest_framework.serializers import as_serializer_error
 
 from django.db import models
@@ -74,26 +74,36 @@ class ReservedUnit(models.Model):
     def total(self) -> 'Decimal':
         return round(self.unit.price * Decimal(self.amount), 2)
 
+    def _process_update_unit_amount(self):
+        try:
+            UnitsUtil().update_unit_amount(self.unit, self.unit.amount)
+        except RestValidationError as err:
+            raise ValidationError(
+                {
+                    'amount':
+                        f'{AMOUNT_ERROR_MESSAGE} {abs(self.unit.amount)}'
+                },
+                code='limit_value'
+            ) from err
+
+    def validate_unique(self, *args, **kwargs) -> None:
+        super().validate_unique(*args, **kwargs)
+        self._process_update_unit_amount()
+
     def clean(self, is_deleted: bool = False) -> None:
         self.is_cleaned = True
 
-        old_instance = ReservedUnit.objects.filter(id=self.id).first()
+        old_reserved = ReservedUnit.objects.filter(
+            id=self.id
+        ).first()
 
         if is_deleted:
-            amount = self.unit.amount + self.amount
+            self.unit.amount += self.amount
         else:
-            amount = (
-                self.unit.amount - (self.amount - old_instance.amount)
-                if old_instance else self.unit.amount - self.amount
+            self.unit.amount -= (
+                self.amount - old_reserved.amount
+                if old_reserved else self.amount
             )
-
-        try:
-            UnitsUtil().update_unit_amount(self.unit, amount)
-        except ValidationError as err:
-            raise DjangoValidationError(
-                {'amount': f'{AMOUNT_ERROR_MESSAGE} {abs(amount)}'},
-                code='limit_value'
-            ) from err
 
 
 @receiver(pre_save, sender=ReservedUnit)
@@ -104,8 +114,9 @@ def update_reserved_hook(
     if not instance.is_cleaned:
         try:
             instance.clean()
-        except DjangoValidationError as err:
-            raise ValidationError(
+            instance._process_update_unit_amount()
+        except ValidationError as err:
+            raise RestValidationError(
                 detail=as_serializer_error(err)
             ) from err
 
@@ -118,7 +129,8 @@ def delete_reserved_hook(
     if not instance.is_cleaned:
         try:
             instance.clean(True)
-        except DjangoValidationError as err:
-            raise ValidationError(
+            instance._process_update_unit_amount()
+        except ValidationError as err:
+            raise RestValidationError(
                 detail=as_serializer_error(err)
             ) from err

@@ -2,19 +2,19 @@
 from decimal import Decimal
 from rest_framework import status
 
+from api.tests.users.base import BaseUsersTest
 from users.models import User
-from tests.users.base import BaseUsersTest
 
 
 class TestUsersView(BaseUsersTest):
     def test__not_admin_user_users__forbidden(self) -> None:
         self.client.force_login(self.user)
-        response = self.client.get(self.user_list_url)
+        response = self.client.get(self.users_list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.get(self.user_detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test__reserved_units_list_put__not_allowed(self) -> None:
+    def test__users_list_put__not_allowed(self) -> None:
         self.client.force_login(self.admin)
 
         response = self.client.put(self.user_detail_url)
@@ -24,11 +24,11 @@ class TestUsersView(BaseUsersTest):
 
     def test__get_users_list__success(self) -> None:
         self.client.force_login(self.admin)
-        response = self.client.get(self.user_list_url)
+        response = self.client.get(self.users_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    def test__get_users_detail__success(self) -> None:
+    def test__get_user_detail__success(self) -> None:
         self.client.force_login(self.admin)
         response = self.client.get(self.user_detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -43,7 +43,7 @@ class TestUsersView(BaseUsersTest):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            self.user_list_url,
+            self.users_list_url,
             data={
                 "username": "test",
                 "first_name": "A",
@@ -62,7 +62,7 @@ class TestUsersView(BaseUsersTest):
         self.assertEqual(response.data['phone'], '123456789')
         self.assertIsNotNone(response.data['app_account']['id'])
 
-    def test__patch_users_detail_success(self) -> None:
+    def test__patch_user_detail_success(self) -> None:
         self.client.force_login(self.admin)
 
         response = self.client.patch(
@@ -83,7 +83,7 @@ class TestUsersView(BaseUsersTest):
         self.assertEqual(response.data['email'], 'patch_test@email.com')
         self.assertEqual(response.data['phone'], self.user.phone)
 
-    def test__patch_account_read_only_users_detail_success(self) -> None:
+    def test__patch_account_read_only_user_detail_success(self) -> None:
         self.client.force_login(self.admin)
 
         response = self.client.patch(
@@ -103,7 +103,7 @@ class TestUsersView(BaseUsersTest):
             response.data['app_account']['id'], self.user.app_account.id
         )
 
-    def test__delete_users_detail_success(self) -> None:
+    def test__delete_user_detail_success(self) -> None:
         self.client.force_login(self.admin)
 
         response = self.client.delete(self.user_detail_url)
@@ -114,23 +114,23 @@ class TestUsersView(BaseUsersTest):
 
 class TestAccountView(BaseUsersTest):
 
-    def test__not_admin_user_users__forbidden(self) -> None:
+    def test__not_admin_user_accounts__forbidden(self) -> None:
         self.client.force_login(self.user)
-        response = self.client.get(self.app_account_list_url)
+        response = self.client.get(self.app_accounts_list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.get(self.app_account_detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test__unit_list_unsafe_methods__not_allowed(self) -> None:
+    def test__accounts_list_unsafe_methods__not_allowed(self) -> None:
         self.client.force_login(self.admin)
         for method in ['post',]:
             call_method = getattr(self.client, method.lower())
-            response = call_method(self.app_account_list_url)
+            response = call_method(self.app_accounts_list_url)
             self.assertEqual(
                 response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
             )
 
-    def test__unit_detail_unsafe_methods__not_allowed(self) -> None:
+    def test__account_detail_unsafe_methods__not_allowed(self) -> None:
         self.client.force_login(self.admin)
         for method in ['put', 'delete']:
             call_method = getattr(self.client, method.lower())
@@ -139,13 +139,13 @@ class TestAccountView(BaseUsersTest):
                 response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
             )
 
-    def test__get_users_list__success(self) -> None:
+    def test__get_accounts_list__success(self) -> None:
         self.client.force_login(self.admin)
-        response = self.client.get(self.app_account_list_url)
+        response = self.client.get(self.app_accounts_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    def test__get_users_detail__success(self) -> None:
+    def test__get_account_detail__success(self) -> None:
         self.client.force_login(self.admin)
         response = self.client.get(self.app_account_detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -154,14 +154,14 @@ class TestAccountView(BaseUsersTest):
             Decimal(response.data['amount']), self.user.app_account.amount
         )
 
-    def test__patch_reserved_units__success(self) -> None:
+    def test__patch_account_detail__success(self) -> None:
         self.client.force_login(self.admin)
 
         initial_amount = self.user.app_account.amount
         response = self.client.patch(
             self.app_account_detail_url,
             data={
-                "amount": initial_amount + Decimal("10")
+                "amount": initial_amount + Decimal('10')
             },
             format='json'
         )
@@ -169,5 +169,5 @@ class TestAccountView(BaseUsersTest):
             response.status_code, status.HTTP_200_OK
         )
         self.assertEqual(
-            Decimal(response.data['amount']), initial_amount + Decimal("10.00")
+            Decimal(response.data['amount']), initial_amount + Decimal('10.00')
         )

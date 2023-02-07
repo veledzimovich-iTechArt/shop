@@ -2,17 +2,17 @@
 from decimal import Decimal
 from rest_framework import status
 
-from tests.units.base import BaseUnitsTest, BaseReservedUnitsTest
+from api.tests.units.base import BaseUnitsTest, BaseReservedUnitsTest
 from units.models import ReservedUnit
 from units.utils import AMOUNT_ERROR_MESSAGE
 
 
 class TestUnitsView(BaseUnitsTest):
-    def test__get_unit_list_unauthorised__forbidden(self) -> None:
+    def test__get_units_list_unauthorised__forbidden(self) -> None:
         response = self.client.get(self.units_list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test__unit_list_unsafe_methods__not_allowed(self) -> None:
+    def test__units_list_unsafe_methods__not_allowed(self) -> None:
         self.client.force_login(self.user)
         for method in ['post',]:
             call_method = getattr(self.client, method.lower())
@@ -111,7 +111,7 @@ class TestUnitsView(BaseUnitsTest):
             )]
         self.assertEqual(srt, [i['id'] for i in response.data])
 
-    def test__get_units_detail__success(self) -> None:
+    def test__get_unit_detail__success(self) -> None:
         self.client.force_login(self.user)
         response = self.client.get(self.units_detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -139,7 +139,7 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         self.client.force_login(self.user)
 
         response = self.client.put(
-            self.reserved_units_detail_url,
+            self.reserved_unit_detail_url,
             data={
                 'user_id': self.user.id,
                 'unit_id': self.reserved_units[0].id
@@ -323,9 +323,9 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
-    def test__get_reserved_units_detail__success(self) -> None:
+    def test__get_reserved_unit_detail__success(self) -> None:
         self.client.force_login(self.user)
-        response = self.client.get(self.reserved_units_detail_url)
+        response = self.client.get(self.reserved_unit_detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['id'], self.reserved_units[0].id)
@@ -368,24 +368,34 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
             response.data['amount'], 1
         )
 
-    def test__post_same_reserved_units_list__success(self) -> None:
+    def test__post_same_reserved_units_list__bad_request(self) -> None:
         self.client.force_login(self.other_reserved_unit.user)
-        initial_amount = self.other_reserved_unit.amount
+        reserved_amount = self.other_reserved_unit.amount
+        initial_unit_amount = self.other_reserved_unit.unit.amount
+
         response = self.client.post(
             self.reserved_units_list_url,
             data={
-                'user_id': self.other_reserved_unit.user.id,
-                'unit_id': self.other_reserved_unit.unit.id,
-                'amount': initial_amount
+                'user_id': self.other_reserved_unit.user_id,
+                'unit_id': self.other_reserved_unit.unit_id,
+                'amount': initial_unit_amount
             },
             format='json'
         )
+        self.other_reserved_unit.unit.refresh_from_db(fields=('amount',))
+        self.other_reserved_unit.refresh_from_db(fields=('amount',))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['non_field_errors'][0],
+            "The fields user_id, unit_id must make a unique set."
+        )
+        self.assertEqual(
+            self.other_reserved_unit.unit.amount,
+            initial_unit_amount
+        )
+        self.assertEqual(self.other_reserved_unit.amount, reserved_amount)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['amount'], initial_amount)
-        self.assertEqual(self.other_reserved_unit.amount, initial_amount)
-
-    def test__post_exceed_reserved_units_list__created(self) -> None:
+    def test__post_exceed_reserved_units_list__bad_request(self) -> None:
         self.client.force_login(self.user)
         exceed = 1
         response = self.client.post(
@@ -402,17 +412,53 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
             response.data['amount'][0], f'{AMOUNT_ERROR_MESSAGE} {exceed}'
         )
 
-    def test__patch_reserved_units_detail__success(self) -> None:
+    def test__post_unknown_user_reserved_units_list__bad_request(self) -> None:
         self.client.force_login(self.user)
-        response = self.client.patch(
-            self.reserved_units_detail_url,
+
+        response = self.client.post(
+            self.reserved_units_list_url,
             data={
-                'amount': self.reserved_units[0].unit.amount
+                'user_id': 100,
+                'unit_id': self.other_unit.id
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn('does not exist', response.data['user_id'][0])
+
+    def test__post_unknown_unit_reserved_units_list__bad_request(self) -> None:
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            self.reserved_units_list_url,
+            data={
+                'user_id': self.user.id,
+                'unit_id': 100
+            },
+            format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertIn('does not exist', response.data['unit_id'][0])
+
+    def test__patch_reserved_unit_detail__success(self) -> None:
+        self.client.force_login(self.user)
+        reserved_amount = self.reserved_units[0].amount
+        initial_unit_amount = self.reserved_units[0].unit.amount
+        response = self.client.patch(
+            self.reserved_unit_detail_url,
+            data={
+                'amount': reserved_amount + initial_unit_amount
             },
             format='json'
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.reserved_units[0].unit.refresh_from_db(fields=('amount',))
+        self.reserved_units[0].refresh_from_db()
+
         self.reserved_units[0].refresh_from_db()
         self.assertEqual(response.data['id'], self.reserved_units[0].id)
         self.assertEqual(
@@ -424,12 +470,28 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         self.assertEqual(
             response.data['amount'], self.reserved_units[0].amount
         )
+        self.assertEqual(
+            self.reserved_units[0].unit.amount, 0
+        )
 
-    def test__patch_exceed_reserved_units_detail__bad_request(self) -> None:
+        response = self.client.patch(
+            self.reserved_unit_detail_url,
+            data={
+                'amount': reserved_amount
+            },
+            format='json'
+        )
+
+        self.reserved_units[0].unit.refresh_from_db(fields=('amount',))
+        self.assertEqual(
+            self.reserved_units[0].unit.amount, initial_unit_amount
+        )
+
+    def test__patch_exceed_reserved_unit_detail__bad_request(self) -> None:
         self.client.force_login(self.user)
         exceed = 2
         response = self.client.patch(
-            self.reserved_units_detail_url,
+            self.reserved_unit_detail_url,
             data={
                 'amount': (
                     self.reserved_units[0].amount
@@ -456,12 +518,20 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test__delete_reserved_units_detail__no_content(self) -> None:
+    def test__delete_reserved_unit_detail__no_content(self) -> None:
         self.client.force_login(self.user)
-        response = self.client.delete(self.reserved_units_detail_url)
+        reserved_amount = self.reserved_units[0].amount
+        initial_unit_amount = self.reserved_units[0].unit.amount
+        response = self.client.delete(self.reserved_unit_detail_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    def test__delete_reserved_units_detail_not_owner__not_found(
+        self.reserved_units[0].unit.refresh_from_db(fields=('amount',))
+        self.assertEqual(
+            self.reserved_units[0].unit.amount,
+            reserved_amount + initial_unit_amount
+        )
+
+    def test__delete_reserved_unit_detail_not_owner__not_found(
         self
     ) -> None:
         self.client.force_login(self.user)
@@ -477,7 +547,7 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
             ReservedUnit.objects.filter(user_id=self.user.id).count(), 0
         )
 
-        self.user.app_account.refresh_from_db()
+        self.user.app_account.refresh_from_db(fields=('amount',))
         self.assertEqual(
             response.data['total'], initial_app_account_amount
         )
@@ -496,9 +566,12 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         self.assertEqual(
             ReservedUnit.objects.filter(user_id=user.id).count(), 1
         )
-        user.app_account.refresh_from_db()
+        user.app_account.refresh_from_db(fields=('amount',))
         self.assertEqual(
             user.app_account.amount, initial_app_account_amount
+        )
+        self.assertEqual(
+            ReservedUnit.objects.filter(user_id=user.id).count(), 1
         )
         self.assertEqual(
             response.data['amount'][0],
@@ -518,7 +591,7 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
             ReservedUnit.objects.filter(user_id=self.user.id).count(), 0
         )
 
-        self.user.app_account.refresh_from_db()
+        self.user.app_account.refresh_from_db(fields=('amount',))
         self.assertEqual(
             self.user.app_account.amount, initial_app_account_amount
         )
