@@ -22,6 +22,7 @@ class User(AbstractUser):
     def __str__(self) -> str:
         return self.username
 
+    # in case we don't need to update and related name set to _app_account
     # @property
     # def app_account(self) -> 'AppAccount':
     #     return AppAccount.objects.get_or_create(user=self)[0]

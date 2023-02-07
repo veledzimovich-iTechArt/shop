@@ -11,7 +11,7 @@ from rest_framework.serializers import as_serializer_error
 from django.db import models
 from shops.models import Shop
 from users.models import User
-from units.utils import UnitsUtil, AMOUNT_ERROR_MESSAGE
+from units.utils import AMOUNT_ERROR_MESSAGE, UnitsUtil
 
 # Create your models here.
 

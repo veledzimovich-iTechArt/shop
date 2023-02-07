@@ -1,4 +1,5 @@
 from rest_framework.permissions import IsAdminUser
+from rest_framework import mixins
 from rest_framework import viewsets
 
 from users.serializers import AppAccountSerializer, UserSerializer
@@ -13,7 +14,12 @@ class UserView(viewsets.ModelViewSet):
     http_method_names = ['get', 'head', 'options', 'post', 'patch', 'delete']
 
 
-class AppAccountView(viewsets.ModelViewSet):
+class AppAccountView(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = AppAccount.objects.all()
     serializer_class = AppAccountSerializer
     permission_classes = [IsAdminUser]
