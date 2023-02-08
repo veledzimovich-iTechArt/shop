@@ -25,13 +25,13 @@ class Unit(models.Model):
         max_digits=8,
         decimal_places=2,
         default=Decimal(1),
-        validators=[MinValueValidator(Decimal())]
+        validators=[MinValueValidator(Decimal('0.01'))]
     )
     price = models.DecimalField(
         max_digits=16,
         decimal_places=2,
         default=Decimal(1),
-        validators=[MinValueValidator(Decimal())]
+        validators=[MinValueValidator(Decimal('0.01'))]
     )
     amount = models.PositiveIntegerField(
         default=1
