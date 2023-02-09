@@ -127,10 +127,15 @@ def delete_reserved_hook(
 ) -> None:
 
     if not instance.is_cleaned:
-        try:
-            instance.clean(True)
-            instance._process_update_unit_amount()
-        except ValidationError as err:
-            raise RestValidationError(
-                detail=as_serializer_error(err)
-            ) from err
+        instance.clean(True)
+        instance._process_update_unit_amount()
+
+        # probably this exception is useless
+        # try:
+        #     instance.clean(True)
+        #     instance._process_update_unit_amount()
+
+        # except ValidationError as err:
+        #     raise RestValidationError(
+        #         detail=as_serializer_error(err)
+        #     ) from err

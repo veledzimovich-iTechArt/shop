@@ -5,7 +5,7 @@ from django.db.utils import IntegrityError
 from api.tests.shops.factories import ShopFactory
 
 
-class TestShopsModel(TestCase):
+class TestShopModel(TestCase):
 
     def setUp(self) -> None:
         self.shop = ShopFactory()
@@ -20,3 +20,6 @@ class TestShopsModel(TestCase):
             self.assertEqual(type(err), IntegrityError)
         else:
             self.fail('IntegrityError not raised')
+
+    def test_shop_str_representation(self) -> None:
+        self.assertEqual(str(self.shop), self.shop.name)

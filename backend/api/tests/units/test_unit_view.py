@@ -3,7 +3,8 @@ from decimal import Decimal
 from rest_framework import status
 
 from api.tests.units.base import BaseUnitsTest, BaseReservedUnitsTest
-from units.models import ReservedUnit
+from units.filters import OrderingByPropertyFilter
+from units.models import ReservedUnit, Unit
 from units.utils import AMOUNT_ERROR_MESSAGE
 
 
@@ -89,6 +90,25 @@ class TestUnitsView(BaseUnitsTest):
         ]
 
         self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_filtered_queryset_without_ordering__success(self) -> None:
+        property_filter = OrderingByPropertyFilter()
+        queryset = property_filter._get_filtered_queryset(
+            Unit.objects.select_related('shop'), [], []
+        )
+        # still sorted by default ordering
+        srt = [
+            i.id for i in sorted(
+                queryset,
+                key=lambda x: (
+                    x.shop.name,
+                    x.name,
+                    x.price
+                )
+            )
+        ]
+
+        self.assertEqual(srt, [i.id for i in queryset])
 
     def test__get_units_list_ordering_by_price_for_kg_reversed___success(
         self
@@ -218,6 +238,31 @@ class TestReservedUnitsView(BaseReservedUnitsTest):
         ]
 
         self.assertEqual(srt, [i['id'] for i in response.data])
+
+    def test__get_filtered_queryset_without_ordering__success(self) -> None:
+        property_filter = OrderingByPropertyFilter()
+        queryset = property_filter._get_filtered_queryset(
+            (
+                ReservedUnit.objects
+                .filter(user_id=self.user.id)
+                .select_related('user', 'unit__shop')
+            ),
+            [],
+            []
+        )
+        # still sorted by default ordering
+        srt = [
+            i.id for i in sorted(
+                queryset,
+                key=lambda x: (
+                    x.unit.shop.name,
+                    x.unit.name,
+                    x.unit.price
+                )
+            )
+        ]
+
+        self.assertEqual(srt, [i.id for i in queryset])
 
     def test__get_reserved_units_list_ordered_by_price_for_kg_reversed__success(
         self

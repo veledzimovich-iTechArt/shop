@@ -5,7 +5,7 @@ from django.db.utils import IntegrityError
 from api.tests.users.factories import UserFactory
 
 
-class TestUnitsModel(TestCase):
+class TestUserModel(TestCase):
 
     def setUp(self) -> None:
         self.user = UserFactory()
@@ -35,3 +35,11 @@ class TestUnitsModel(TestCase):
     def test_phone_is_none(self) -> None:
         user = UserFactory(phone=None)
         self.assertIsNone(user.phone)
+
+    def test_user_str_representation(self) -> None:
+        self.assertEqual(str(self.user), self.user.username)
+
+    def test_app_account_str_representation(self) -> None:
+        self.assertEqual(
+            str(self.user.app_account), str(self.user.app_account.id)
+        )

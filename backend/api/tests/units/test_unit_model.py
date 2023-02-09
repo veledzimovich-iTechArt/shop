@@ -5,7 +5,7 @@ from django.db.utils import IntegrityError
 from api.tests.units.factories import ReservedUnitFactory, UnitFactory
 
 
-class TestUnitsModel(TestCase):
+class TestUnitModel(TestCase):
 
     def setUp(self) -> None:
         self.unit = UnitFactory()
@@ -23,8 +23,11 @@ class TestUnitsModel(TestCase):
         else:
             self.fail('IntegrityError not raised')
 
+    def test_unit_str_representation(self) -> None:
+        self.assertEqual(str(self.unit), f'{self.unit.name} [{self.unit.shop}]')
 
-class TestReservedUnitsModel(TestCase):
+
+class TestReservedUnitModel(TestCase):
 
     def setUp(self) -> None:
         self.reserved_unit = ReservedUnitFactory()
@@ -40,3 +43,9 @@ class TestReservedUnitsModel(TestCase):
             self.assertEqual(type(err), IntegrityError)
         else:
             self.fail('IntegrityError not raised')
+
+    def test_reserved_unit_str_representation(self) -> None:
+        self.assertEqual(
+            str(self.reserved_unit),
+            f'{self.reserved_unit.unit} ({self.reserved_unit.user})'
+        )

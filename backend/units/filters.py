@@ -1,5 +1,5 @@
 from operator import attrgetter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from django.db.models import Case, When
 from rest_framework.filters import OrderingFilter
@@ -39,12 +39,12 @@ class OrderingByPropertyFilter(OrderingFilter):
             *[When(pk=pk, then=pos) for pos, pk in enumerate(index_list)]
         )
 
-    def filter_queryset(
-        self, request: 'Request', queryset: 'QuerySet', view: 'UnitView'
+    def _get_filtered_queryset(
+        self,
+        queryset: 'QuerySet',
+        ordering: 'List',
+        property_ordering: 'List'
     ) -> 'QuerySet':
-        ordering = self.get_ordering(request, queryset, view)
-        property_ordering = self.get_property_ordering_fields(view)
-
         if ordering:
             final_ordering = []
             for order in ordering:
@@ -56,3 +56,13 @@ class OrderingByPropertyFilter(OrderingFilter):
                     final_ordering.append(order)
             return queryset.order_by(*final_ordering)
         return queryset
+
+    def filter_queryset(
+        self, request: 'Request', queryset: 'QuerySet', view: 'UnitView'
+    ) -> 'QuerySet':
+        ordering = self.get_ordering(request, queryset, view)
+        property_ordering = self.get_property_ordering_fields(view)
+
+        return self._get_filtered_queryset(
+            queryset, ordering, property_ordering
+        )

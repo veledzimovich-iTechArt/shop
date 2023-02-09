@@ -6,4 +6,4 @@ class ShopFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Shop
 
-    name = factory.Faker('company')
+    name = factory.Sequence(lambda n: f'Company {n}')
